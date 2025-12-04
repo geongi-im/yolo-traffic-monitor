@@ -1,0 +1,15 @@
+# Core YOLO and Computer Vision
+ultralytics==8.3.0
+opencv-python==4.10.0.84
+
+# HLS Stream Processing
+streamlink==8.0.0
+
+# Video Processing Enhancement
+ffmpeg-python==0.2.0
+
+# Existing dependencies
+python-dotenv==1.0.0
+requests==2.32.0
+Pillow==10.4.0
+numpy==1.26.4
