@@ -8,6 +8,10 @@ streamlink==8.0.0
 # Video Processing Enhancement
 ffmpeg-python==0.2.0
 
+# Web Server
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+
 # Existing dependencies
 python-dotenv==1.0.0
 requests==2.32.0
