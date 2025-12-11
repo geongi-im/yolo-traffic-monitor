@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YOLO Traffic Monitor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .spinner {
+            border: 3px solid #f3f4f6;
+            border-top: 3px solid #3b82f6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen flex flex-col">
+
+    <!-- 헤더 -->
+    <header class="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">
+                    <i class="fa-solid fa-video"></i>
+                </div>
+                <h1 class="text-xl font-bold tracking-tight">YOLO Traffic Monitor</h1>
+            </div>
+        </div>
+    </header>
+
+    <!-- 메인 콘텐츠 -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-grow w-full">
+
+        <!-- 위치 선택 버튼 -->
+        <div class="flex justify-center mb-8">
+            <div class="bg-white p-2 rounded-2xl shadow-sm border border-gray-200 flex flex-wrap justify-center gap-2">
+                <button onclick="selectLocation(this, '강남대로', 6301)" class="location-btn min-w-[100px] sm:min-w-[120px] px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                    강남대로
+                </button>
+                <button onclick="selectLocation(this, '테헤란로', 6300)" class="location-btn min-w-[100px] sm:min-w-[120px] px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                    테헤란로
+                </button>
+                <button onclick="selectLocation(this, '올림픽대로', 6302)" class="location-btn min-w-[100px] sm:min-w-[120px] px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                    올림픽대로
+                </button>
+            </div>
+        </div>
+
+        <!-- 비디오 플레이어 섹션 -->
+        <div class="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-6">
+            <div class="p-6 border-b border-gray-100">
+                <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <i class="fa-solid fa-play-circle text-blue-600"></i>
+                    <span id="location-title">위치를 선택해주세요</span>
+                </h2>
+            </div>
+
+            <!-- 비디오 컨테이너 -->
+            <div class="relative bg-black aspect-video">
+                <!-- 초기 안내 메시지 -->
+                <div id="initial-message" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
+                    <div class="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-location-dot text-gray-400 text-2xl"></i>
+                    </div>
+                    <p class="text-white text-lg font-semibold mb-2">위치를 선택하세요</p>
+                    <p class="text-gray-400 text-sm">상단 버튼을 클릭하여 CCTV 스트림을 시청하세요</p>
+                </div>
+
+                <!-- 로딩 스피너 -->
+                <div id="loading-overlay" class="absolute inset-0 flex-col items-center justify-center bg-gray-900 z-10 hidden">
+                    <div class="spinner mb-4"></div>
+                    <p class="text-white text-sm">HLS 스트림 로딩 중...</p>
+                </div>
+
+                <!-- 에러 메시지 -->
+                <div id="error-overlay" class="absolute inset-0 flex-col items-center justify-center bg-gray-900 z-10 hidden">
+                    <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="fa-solid fa-exclamation-triangle text-red-600 text-2xl"></i>
+                    </div>
+                    <p class="text-white text-lg font-semibold mb-2">스트림 로딩 실패</p>
+                    <p class="text-gray-400 text-sm mb-4" id="error-message">알 수 없는 오류가 발생했습니다</p>
+                    <button onclick="retryLoad()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+                        <i class="fa-solid fa-rotate-right mr-2"></i>
+                        다시 시도
+                    </button>
+                </div>
+
+                <!-- 비디오 플레이어 -->
+                <video
+                    id="video"
+                    controls
+                    class="w-full h-full hidden"
+                    autoplay
+                    muted
+                    loop
+                ></video>
+            </div>
+
+            <!-- 비디오 하단 정보 -->
+            <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center text-sm">
+                <div class="flex items-center gap-2 text-gray-600">
+                    <i class="fa-regular fa-clock"></i>
+                    <span id="current-time">00:00:00</span>
+                </div>
+                <div id="stream-status" class="flex items-center gap-2">
+                    <div class="w-2 h-2 bg-gray-400 rounded-full"></div>
+                    <span class="text-gray-500">대기 중</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 스트림 정보 패널 -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- CCTV 정보 -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 class="text-sm font-medium text-gray-500 mb-4 uppercase tracking-wider">
+                    CCTV 정보
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">위치</span>
+                        <span class="font-semibold text-gray-900" id="location-name">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">CCTV ID</span>
+                        <span class="font-semibold text-gray-900" id="cctv-id">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">스트림 형식</span>
+                        <span class="font-semibold text-gray-900">HLS (.m3u8)</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">플레이어</span>
+                        <span class="font-semibold text-gray-900" id="player-type">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 연결 상태 -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h3 class="text-sm font-medium text-gray-500 mb-4 uppercase tracking-wider">
+                    연결 상태
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">API 상태</span>
+                        <span class="font-semibold" id="api-status">
+                            <span class="text-gray-400">대기 중</span>
+                        </span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">HLS URL</span>
+                        <span class="font-semibold" id="hls-status">
+                            <span class="text-gray-400">대기 중</span>
+                        </span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-600">재생 상태</span>
+                        <span class="font-semibold" id="playback-status">
+                            <span class="text-gray-400">대기 중</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        let hls = null;
+        let currentHlsUrl = null;
+        let currentCctvId = null;
+        let currentLocationName = null;
+        let videoMonitorInterval = null;
+        let isReconnecting = false;
+        let lastCurrentTime = 0;
+        let stuckCounter = 0;
+
+        // 현재 시간 업데이트
+        function updateCurrentTime() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('ko-KR');
+        }
+        setInterval(updateCurrentTime, 1000);
+        updateCurrentTime();
+
+        // 상태 업데이트 헬퍼 함수
+        function updateStatus(elementId, text, color) {
+            const el = document.getElementById(elementId);
+            el.innerHTML = `<span class="text-${color}-600">${text}</span>`;
+        }
+
+        function updateStreamStatus(text, color) {
+            const statusEl = document.getElementById('stream-status');
+            statusEl.innerHTML = `
+                <div class="w-2 h-2 bg-${color}-500 rounded-full animate-pulse"></div>
+                <span class="text-${color}-600 font-medium">${text}</span>
+            `;
+        }
+
+        // 위치 선택
+        function selectLocation(btn, locationName, cctvId) {
+            currentLocationName = locationName;
+            currentCctvId = cctvId;
+
+            // 모든 버튼 초기화
+            document.querySelectorAll('.location-btn').forEach(b => {
+                b.classList.remove('bg-blue-600', 'text-white', 'shadow-md', 'scale-105');
+                b.classList.add('text-gray-600', 'hover:bg-gray-50', 'hover:text-gray-900');
+            });
+
+            // 클릭된 버튼 활성화
+            btn.classList.remove('text-gray-600', 'hover:bg-gray-50', 'hover:text-gray-900');
+            btn.classList.add('bg-blue-600', 'text-white', 'shadow-md', 'scale-105');
+
+            // 타이틀 업데이트
+            document.getElementById('location-title').textContent = `${locationName} 실시간 스트림`;
+            document.getElementById('location-name').textContent = locationName;
+            document.getElementById('cctv-id').textContent = cctvId;
+
+            // HLS 스트림 로드
+            loadHlsStream(cctvId);
+        }
+
+        // 비디오 상태 모니터링 (재생 시간 멈춤 감지)
+        function startVideoMonitoring() {
+            // 기존 모니터링 중지
+            if (videoMonitorInterval) {
+                clearInterval(videoMonitorInterval);
+            }
+
+            const video = document.getElementById('video');
+            lastCurrentTime = video.currentTime;
+            stuckCounter = 0;
+
+            videoMonitorInterval = setInterval(() => {
+                if (!video || !currentCctvId || isReconnecting) {
+                    return;
+                }
+
+                // 재생 중이지만 currentTime이 멈춰있는지 확인
+                if (!video.paused && !video.ended) {
+                    const currentTime = video.currentTime;
+
+                    // currentTime이 변하지 않았으면 카운터 증가
+                    if (Math.abs(currentTime - lastCurrentTime) < 0.1) {
+                        stuckCounter++;
+                        console.log(`재생 멈춤 감지 (${stuckCounter}/5): currentTime=${currentTime.toFixed(2)}`);
+
+                        // 5초 연속으로 currentTime이 변하지 않으면 재연결
+                        if (stuckCounter >= 5) {
+                            console.warn('5초 동안 재생 시간 정지, 재연결 시도');
+                            stuckCounter = 0;
+                            reconnectStream();
+                        }
+                    } else {
+                        // currentTime이 정상적으로 증가하면 카운터 리셋
+                        if (stuckCounter > 0) {
+                            console.log('재생 정상 재개, stuck 카운터 리셋');
+                        }
+                        stuckCounter = 0;
+                    }
+
+                    lastCurrentTime = currentTime;
+                }
+            }, 1000); // 1초마다 체크
+        }
+
+        // 스트림 재연결
+        async function reconnectStream() {
+            if (isReconnecting) {
+                return;
+            }
+
+            isReconnecting = true;
+            console.log('스트림 재연결 시작...');
+
+            try {
+                updateStreamStatus('재연결 중', 'yellow');
+
+                // 기존 플레이어 정리
+                const video = document.getElementById('video');
+                if (hls) {
+                    hls.destroy();
+                    hls = null;
+                }
+
+                // 새로운 HLS URL 요청
+                await loadHlsStream(currentCctvId);
+
+                console.log('스트림 재연결 성공');
+            } catch (error) {
+                console.error('스트림 재연결 실패:', error);
+                updateStreamStatus('재연결 실패', 'red');
+
+                // 5초 후 다시 시도
+                setTimeout(() => {
+                    if (currentCctvId) {
+                        reconnectStream();
+                    }
+                }, 5000);
+            } finally {
+                isReconnecting = false;
+            }
+        }
+
+        // 에러 표시
+        function showError(message) {
+            document.getElementById('initial-message').classList.add('hidden');
+            document.getElementById('loading-overlay').classList.add('hidden');
+            document.getElementById('loading-overlay').classList.remove('flex');
+            document.getElementById('error-overlay').classList.remove('hidden');
+            document.getElementById('error-overlay').classList.add('flex');
+            document.getElementById('error-message').textContent = message;
+            updateStatus('api-status', '실패', 'red');
+            updateStreamStatus('오류', 'red');
+        }
+
+        // 재시도
+        function retryLoad() {
+            if (currentCctvId) {
+                document.getElementById('error-overlay').classList.add('hidden');
+                document.getElementById('error-overlay').classList.remove('flex');
+                loadHlsStream(currentCctvId);
+            }
+        }
+
+        // HLS 스트림 로드
+        async function loadHlsStream(cctvId) {
+            try {
+                // 초기 메시지 숨기기, 로딩 표시
+                document.getElementById('initial-message').classList.add('hidden');
+                document.getElementById('loading-overlay').classList.remove('hidden');
+                document.getElementById('loading-overlay').classList.add('flex');
+                document.getElementById('video').classList.add('hidden');
+
+                updateStatus('api-status', '요청 중...', 'yellow');
+                updateStreamStatus('연결 중', 'yellow');
+
+                // API 호출
+                const response = await fetch(`/api/hls-url?cctv_id=${cctvId}`);
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || `HTTP ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (!data.success || !data.hls_url) {
+                    throw new Error('HLS URL을 받지 못했습니다');
+                }
+
+                currentHlsUrl = data.hls_url;
+
+                updateStatus('api-status', '성공', 'green');
+                updateStatus('hls-status', '획득 완료', 'green');
+
+                // HLS 플레이어 초기화
+                initializePlayer(currentHlsUrl);
+
+                // 비디오 모니터링 시작
+                startVideoMonitoring();
+
+            } catch (error) {
+                console.error('HLS URL 로드 실패:', error);
+                showError(error.message);
+            }
+        }
+
+        // HLS 플레이어 초기화
+        function initializePlayer(hlsUrl) {
+            const video = document.getElementById('video');
+
+            // 기존 HLS 인스턴스 정리
+            if (hls) {
+                hls.destroy();
+            }
+
+            // Safari는 네이티브 HLS 지원
+            if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = hlsUrl;
+                document.getElementById('player-type').textContent = 'Native (Safari)';
+
+                video.addEventListener('loadedmetadata', () => {
+                    document.getElementById('loading-overlay').classList.add('hidden');
+                    document.getElementById('loading-overlay').classList.remove('flex');
+                    document.getElementById('video').classList.remove('hidden');
+                    updateStatus('playback-status', '재생 중', 'green');
+                    updateStreamStatus('라이브', 'green');
+                });
+
+                video.addEventListener('error', () => {
+                    showError('비디오 재생 오류가 발생했습니다');
+                });
+
+            }
+            // 다른 브라우저는 hls.js 사용
+            else if (Hls.isSupported()) {
+                hls = new Hls({
+                    enableWorker: true,
+                    lowLatencyMode: true,
+                });
+
+                hls.loadSource(hlsUrl);
+                hls.attachMedia(video);
+
+                document.getElementById('player-type').textContent = 'HLS.js';
+
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    console.log('HLS manifest 파싱 완료');
+                    document.getElementById('loading-overlay').classList.add('hidden');
+                    document.getElementById('loading-overlay').classList.remove('flex');
+                    document.getElementById('video').classList.remove('hidden');
+                    updateStatus('playback-status', '재생 중', 'green');
+                    updateStreamStatus('라이브', 'green');
+
+                    // 자동 재생 (음소거 상태)
+                    video.play().catch(e => {
+                        console.log('자동 재생 실패:', e);
+                    });
+                });
+
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    console.error('HLS 오류:', data);
+                    if (data.fatal) {
+                        switch(data.type) {
+                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                showError('네트워크 오류: 스트림에 접속할 수 없습니다');
+                                break;
+                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                showError('미디어 오류: 비디오를 디코딩할 수 없습니다');
+                                hls.recoverMediaError();
+                                break;
+                            default:
+                                showError('치명적인 오류가 발생했습니다');
+                                break;
+                        }
+                    }
+                });
+
+            } else {
+                showError('이 브라우저는 HLS 재생을 지원하지 않습니다');
+            }
+        }
+
+        // 페이지 언로드 시 리소스 정리
+        window.addEventListener('beforeunload', () => {
+            if (hls) {
+                hls.destroy();
+            }
+        });
+    </script>
+</body>
+</html>
