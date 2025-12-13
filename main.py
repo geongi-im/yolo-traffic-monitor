@@ -9,7 +9,7 @@ from utils.logger_util import LoggerUtil
 from utils.telegram_util import TelegramUtil
 
 # CCTV 설정 (상수)
-CCTV_ID = 6301  # 강남대로
+CCTV_ID = 6301  # 수영로
 
 # 환경변수 로드
 load_dotenv()
@@ -32,7 +32,7 @@ def validate_env_variables():
 
     # 타입 체크를 통과한 값들만 변환
     return {
-        'CCTV_ID': CCTV_ID,  # 상수 사용
+        'CCTV_ID': CCTV_ID,
         'YOLO_MODEL': required_vars['YOLO_MODEL'] or '',
         'CONFIDENCE_THRESHOLD': float(required_vars['CONFIDENCE_THRESHOLD']) if required_vars['CONFIDENCE_THRESHOLD'] else 0.0,
         'DEVICE': required_vars['DEVICE'] or 'cpu',
