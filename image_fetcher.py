@@ -1,7 +1,7 @@
 import requests
 import os
 import cv2
-import streamlink
+
 
 
 class ImageFetcher:
@@ -77,22 +77,14 @@ class ImageFetcher:
         saved_paths = []
 
         try:
-            # Streamlink로 스트림 URL 획득
-            self.logger.info(f"HLS 스트림 연결 시도...")
-            streams = streamlink.streams(hls_url)
-
-            if not streams or 'best' not in streams:
-                self.logger.error("스트림을 찾을 수 없음")
-                return []
-
-            stream_url = streams['best'].url
-            self.logger.info("스트림 URL 획득 완료, VideoCapture 생성 중...")
-
-            # VideoCapture로 스트림 열기
-            cap = cv2.VideoCapture(stream_url)
+            # Streamlink 의존성 제거: OpenCV가 HLS를 직접 처리하도록 변경
+            self.logger.info(f"HLS 스트림 연결 시도: {hls_url}")
+            
+            # VideoCapture로 스트림 열기 (FFmpeg 백엔드 사용)
+            cap = cv2.VideoCapture(hls_url)
 
             if not cap.isOpened():
-                self.logger.error("VideoCapture 열기 실패")
+                self.logger.error("VideoCapture 열기 실패 (스트림을 찾을 수 없거나 코덱 지원 안됨)")
                 return []
 
             # temp 디렉토리 생성

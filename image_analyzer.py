@@ -38,22 +38,26 @@ class VehicleDetector:
             self.logger.error(f"Failed to load YOLO model: {e}")
             raise
 
-    def detect(self, image_path):
+    def detect(self, image_source):
         """
-        이미지 파일에서 차량 탐지
+        이미지에서 차량 탐지
 
         Args:
-            image_path: 분석할 이미지 파일 경로
+            image_source: 이미지 파일 경로(str) 또는 이미지 배열(numpy array)
 
         Returns:
             tuple: (annotated_image, detections)
         """
         try:
             # 이미지 읽기
-            frame = cv2.imread(image_path)
-            if frame is None:
-                self.logger.error(f"이미지 읽기 실패: {image_path}")
-                return None, []
+            if isinstance(image_source, str):
+                frame = cv2.imread(image_source)
+                if frame is None:
+                    self.logger.error(f"이미지 읽기 실패: {image_source}")
+                    return None, []
+            else:
+                # 이미지가 이미 numpy array인 경우 (스트리밍 등)
+                frame = image_source
 
             # P0 OPTIMIZATION: Input resizing to 640x640
             # Save original frame size
@@ -117,7 +121,7 @@ class VehicleDetector:
 class ImageAnalyzer:
     """이미지 분석 및 결과 처리"""
 
-    def __init__(self, detector, logger, output_dir):
+    def __init__(self, detector, logger, output_dir=None):
         self.detector = detector
         self.logger = logger
         self.output_dir = output_dir
@@ -132,6 +136,8 @@ class ImageAnalyzer:
             detections: 탐지 결과 리스트
             avg_vehicle_count: 평균 차량 수 (옵션, 멀티프레임 분석 시 사용)
         """
+        # (기존 내부 로직 유지하되, 라이브 스트리밍용 메소드도 동일한 스타일을 사용하도록 재사용 가능성 고려)
+        # 여기서는 기존 로직 유지
         if not detections and avg_vehicle_count is None:
             # 차량이 없어도 "Vehicles: 0" 표시
             h, w = frame.shape[:2]
@@ -233,6 +239,72 @@ class ImageAnalyzer:
             )
             y_offset += text_height + line_spacing
 
+        return frame
+
+    def process_live_frame(self, frame):
+        """
+        라이브 스트림 프레임 처리 (Detect + Draw)
+        
+        Args:
+            frame: 입력 프레임 (numpy array)
+            
+        Returns:
+            processed_frame: 분석 및 시각화된 프레임
+        """
+        annotated_frame, detections = self.detector.detect(frame)
+        
+        if annotated_frame is None:
+            return frame
+            
+        # 라이브 통계 표시
+        return self.draw_live_stats(annotated_frame, detections)
+
+    @staticmethod
+    def draw_live_stats(frame, detections):
+        """
+        라이브 스트리밍용 통계 오버레이 (Server.py에서 사용)
+        좌측 상단에 심플하게 표시
+
+        Args:
+            frame: 프레임 이미지
+            detections: 탐지 결과 리스트
+        
+        Returns:
+            annotated_frame: 텍스트가 그려진 이미지
+        """
+        vehicle_cnt = len(detections)
+        text = f"Detect Vehicles: {vehicle_cnt}"
+        
+        # 텍스트 배경 박스
+        font_scale = 0.5
+        thickness = 2
+        (w, h), baseline = cv2.getTextSize(text, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)
+        
+        # 좌측 상단 (여백 10px)
+        x, y = 10, 10
+        box_pad = 10
+        
+        overlay = frame.copy()
+        cv2.rectangle(
+            overlay, 
+            (x, y), 
+            (x + w + box_pad*2, y + h + box_pad*2), 
+            (0, 0, 0), 
+            -1
+        )
+        # 투명도 적용
+        frame = cv2.addWeighted(overlay, 0.6, frame, 0.4, 0)
+        
+        cv2.putText(
+            frame, 
+            text, 
+            (x + box_pad, y + h + box_pad), 
+            cv2.FONT_HERSHEY_SIMPLEX, 
+            font_scale, 
+            (0, 255, 0),  # Green
+            thickness
+        )
+        
         return frame
 
     def analyze(self, image_path):

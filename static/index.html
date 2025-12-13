@@ -44,29 +44,38 @@
         <!-- 위치 선택 버튼 -->
         <div class="flex justify-center mb-8">
             <div class="bg-white p-2 rounded-2xl shadow-sm border border-gray-200 flex flex-wrap justify-center gap-2">
-                <button onclick="selectLocation(this, '강남대로', 6301)" class="location-btn min-w-[100px] sm:min-w-[120px] px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                    강남대로
+                <button onclick="selectLocation(this, '수영로', 6301)" class="location-btn min-w-[100px] sm:min-w-[120px] px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                    수영로
                 </button>
-                <button onclick="selectLocation(this, '테헤란로', 6300)" class="location-btn min-w-[100px] sm:min-w-[120px] px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                    테헤란로
+                <button onclick="selectLocation(this, '자성로', 6300)" class="location-btn min-w-[100px] sm:min-w-[120px] px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                    자성로
                 </button>
-                <button onclick="selectLocation(this, '올림픽대로', 6302)" class="location-btn min-w-[100px] sm:min-w-[120px] px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900">
-                    올림픽대로
+                <button onclick="selectLocation(this, '황령대로', 6323)" class="location-btn min-w-[100px] sm:min-w-[120px] px-4 sm:px-6 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center justify-center gap-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900">
+                    황령대로
                 </button>
             </div>
         </div>
 
         <!-- 비디오 플레이어 섹션 -->
         <div class="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden mb-6">
-            <div class="p-6 border-b border-gray-100">
+            <div class="p-6 border-b border-gray-100 flex justify-between items-center">
                 <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
                     <i class="fa-solid fa-play-circle text-blue-600"></i>
                     <span id="location-title">위치를 선택해주세요</span>
                 </h2>
+                <!-- 모드 전환 -->
+                <div class="flex bg-gray-100 rounded-lg p-1">
+                    <button onclick="switchMode('live')" id="btn-live" class="px-3 py-1.5 rounded-md text-sm font-medium bg-white text-gray-900 shadow-sm transition-all">
+                        LIVE
+                    </button>
+                    <button onclick="switchMode('analysis')" id="btn-analysis" class="px-3 py-1.5 rounded-md text-sm font-medium text-gray-500 hover:text-gray-900 transition-all">
+                        실시간 분석
+                    </button>
+                </div>
             </div>
 
-            <!-- 비디오 컨테이너 -->
-            <div class="relative bg-black aspect-video">
+            <!-- 비디오 컨테이너 (LIVE 모드) -->
+            <div id="live-view" class="relative bg-black aspect-video">
                 <!-- 초기 안내 메시지 -->
                 <div id="initial-message" class="absolute inset-0 flex flex-col items-center justify-center bg-gray-900">
                     <div class="w-16 h-16 bg-gray-700 rounded-full flex items-center justify-center mb-4">
@@ -80,6 +89,7 @@
                 <div id="loading-overlay" class="absolute inset-0 flex-col items-center justify-center bg-gray-900 z-10 hidden">
                     <div class="spinner mb-4"></div>
                     <p class="text-white text-sm">HLS 스트림 로딩 중...</p>
+                    <p class="text-gray-400 text-xs mt-2">백그라운드 분석이 시작됩니다</p>
                 </div>
 
                 <!-- 에러 메시지 -->
@@ -106,6 +116,24 @@
                 ></video>
             </div>
 
+            <!-- 분석 뷰어 (ANALYSIS 모드 - MJPEG 스트리밍) -->
+            <div id="analysis-view" class="relative bg-gray-900 aspect-video hidden flex-col items-center justify-center">
+                <img id="analysis-image" src="" alt="Live Analysis" class="w-full h-full object-contain overflow-hidden hidden">
+                
+                <!-- 분석 로딩 중 메시지 -->
+                <div id="no-analysis" class="flex flex-col items-center text-gray-400 absolute inset-0 justify-center">
+                    <div class="spinner mb-4 border-gray-600 border-t-blue-500"></div>
+                    <p class="font-medium">실시간 분석 스트림 연결 중...</p>
+                    <p class="text-xs mt-2 text-gray-500">AI 모델 로딩에 시간이 걸릴 수 있습니다</p>
+                </div>
+
+                <!-- 라이브 표시 -->
+                <div class="absolute top-4 left-4 flex items-center gap-2 bg-black/60 backdrop-blur-sm px-3 py-1.5 rounded-lg">
+                    <div class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></div>
+                    <span class="text-white text-xs font-bold tracking-wider">LIVE ANALYSIS</span>
+                </div>
+            </div>
+
             <!-- 비디오 하단 정보 -->
             <div class="p-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center text-sm">
                 <div class="flex items-center gap-2 text-gray-600">
@@ -119,60 +147,7 @@
             </div>
         </div>
 
-        <!-- 스트림 정보 패널 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- CCTV 정보 -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 class="text-sm font-medium text-gray-500 mb-4 uppercase tracking-wider">
-                    CCTV 정보
-                </h3>
-                <div class="space-y-3">
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">위치</span>
-                        <span class="font-semibold text-gray-900" id="location-name">-</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">CCTV ID</span>
-                        <span class="font-semibold text-gray-900" id="cctv-id">-</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">스트림 형식</span>
-                        <span class="font-semibold text-gray-900">HLS (.m3u8)</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">플레이어</span>
-                        <span class="font-semibold text-gray-900" id="player-type">-</span>
-                    </div>
-                </div>
-            </div>
 
-            <!-- 연결 상태 -->
-            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h3 class="text-sm font-medium text-gray-500 mb-4 uppercase tracking-wider">
-                    연결 상태
-                </h3>
-                <div class="space-y-3">
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">API 상태</span>
-                        <span class="font-semibold" id="api-status">
-                            <span class="text-gray-400">대기 중</span>
-                        </span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">HLS URL</span>
-                        <span class="font-semibold" id="hls-status">
-                            <span class="text-gray-400">대기 중</span>
-                        </span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-gray-600">재생 상태</span>
-                        <span class="font-semibold" id="playback-status">
-                            <span class="text-gray-400">대기 중</span>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
 
     </main>
 
@@ -194,11 +169,7 @@
         setInterval(updateCurrentTime, 1000);
         updateCurrentTime();
 
-        // 상태 업데이트 헬퍼 함수
-        function updateStatus(elementId, text, color) {
-            const el = document.getElementById(elementId);
-            el.innerHTML = `<span class="text-${color}-600">${text}</span>`;
-        }
+
 
         function updateStreamStatus(text, color) {
             const statusEl = document.getElementById('stream-status');
@@ -225,8 +196,7 @@
 
             // 타이틀 업데이트
             document.getElementById('location-title').textContent = `${locationName} 실시간 스트림`;
-            document.getElementById('location-name').textContent = locationName;
-            document.getElementById('cctv-id').textContent = cctvId;
+
 
             // HLS 스트림 로드
             loadHlsStream(cctvId);
@@ -322,7 +292,7 @@
             document.getElementById('error-overlay').classList.remove('hidden');
             document.getElementById('error-overlay').classList.add('flex');
             document.getElementById('error-message').textContent = message;
-            updateStatus('api-status', '실패', 'red');
+
             updateStreamStatus('오류', 'red');
         }
 
@@ -344,7 +314,6 @@
                 document.getElementById('loading-overlay').classList.add('flex');
                 document.getElementById('video').classList.add('hidden');
 
-                updateStatus('api-status', '요청 중...', 'yellow');
                 updateStreamStatus('연결 중', 'yellow');
 
                 // API 호출
@@ -362,9 +331,6 @@
                 }
 
                 currentHlsUrl = data.hls_url;
-
-                updateStatus('api-status', '성공', 'green');
-                updateStatus('hls-status', '획득 완료', 'green');
 
                 // HLS 플레이어 초기화
                 initializePlayer(currentHlsUrl);
@@ -390,13 +356,13 @@
             // Safari는 네이티브 HLS 지원
             if (video.canPlayType('application/vnd.apple.mpegurl')) {
                 video.src = hlsUrl;
-                document.getElementById('player-type').textContent = 'Native (Safari)';
+
 
                 video.addEventListener('loadedmetadata', () => {
                     document.getElementById('loading-overlay').classList.add('hidden');
                     document.getElementById('loading-overlay').classList.remove('flex');
                     document.getElementById('video').classList.remove('hidden');
-                    updateStatus('playback-status', '재생 중', 'green');
+
                     updateStreamStatus('라이브', 'green');
                 });
 
@@ -415,14 +381,12 @@
                 hls.loadSource(hlsUrl);
                 hls.attachMedia(video);
 
-                document.getElementById('player-type').textContent = 'HLS.js';
-
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     console.log('HLS manifest 파싱 완료');
                     document.getElementById('loading-overlay').classList.add('hidden');
                     document.getElementById('loading-overlay').classList.remove('flex');
                     document.getElementById('video').classList.remove('hidden');
-                    updateStatus('playback-status', '재생 중', 'green');
+
                     updateStreamStatus('라이브', 'green');
 
                     // 자동 재생 (음소거 상태)
@@ -451,6 +415,76 @@
 
             } else {
                 showError('이 브라우저는 HLS 재생을 지원하지 않습니다');
+            }
+        }
+
+        // 모드 전환
+        function switchMode(mode) {
+            const liveBtn = document.getElementById('btn-live');
+            const analysisBtn = document.getElementById('btn-analysis');
+            const liveView = document.getElementById('live-view');
+            const analysisView = document.getElementById('analysis-view');
+            const analysisImg = document.getElementById('analysis-image');
+            const loadingMsg = document.getElementById('no-analysis');
+
+            if (mode === 'live') {
+                // UI 업데이트
+                liveBtn.classList.replace('text-gray-500', 'text-gray-900');
+                liveBtn.classList.add('bg-white', 'shadow-sm');
+                analysisBtn.classList.replace('text-gray-900', 'text-gray-500');
+                analysisBtn.classList.remove('bg-white', 'shadow-sm');
+
+                // 뷰 전환
+                liveView.classList.remove('hidden');
+                analysisView.classList.add('hidden');
+                analysisView.classList.remove('flex');
+                
+                // 스트림 끊기 (리소스 절약)
+                analysisImg.src = "";
+                analysisImg.classList.add('hidden');
+                
+                // 비디오 재생 재개 (선택적)
+                const video = document.getElementById('video');
+                if (currentHlsUrl && video.paused) {
+                   video.play().catch(e => console.log(e));
+                }
+
+            } else {
+                // 분석 모드 진입
+                if (!currentCctvId) {
+                    alert('먼저 위치를 선택해주세요.');
+                    return;
+                }
+
+                // UI 업데이트
+                analysisBtn.classList.replace('text-gray-500', 'text-gray-900');
+                analysisBtn.classList.add('bg-white', 'shadow-sm');
+                liveBtn.classList.replace('text-gray-900', 'text-gray-500');
+                liveBtn.classList.remove('bg-white', 'shadow-sm');
+
+                // 뷰 전환
+                liveView.classList.add('hidden');
+                analysisView.classList.remove('hidden');
+                analysisView.classList.add('flex');
+
+                // 로딩 표시
+                loadingMsg.classList.remove('hidden');
+                analysisImg.classList.add('hidden');
+
+                // 스트림 시작
+                // 타어임스탬프로 캐시 방지
+                analysisImg.src = `/api/video_feed?cctv_id=${currentCctvId}&t=${Date.now()}`;
+                
+                // 이미지 로드 완료 시 로딩 숨김
+                analysisImg.onload = function() {
+                    loadingMsg.classList.add('hidden');
+                    analysisImg.classList.remove('hidden');
+                };
+                
+                analysisImg.onerror = function() {
+                    // 에러 처리 (재시도 로직 등 필요시 추가)
+                    console.error("스트림 연결 실패");
+                };
             }
         }
 
