@@ -72,7 +72,7 @@ class VideoStreamer:
             self.detector = VehicleDetector(
                 config['YOLO_MODEL'],
                 config['CONFIDENCE_THRESHOLD'],
-                [2, 3, 5, 7],  # car, motorcycle, bus, truck
+                [0],  # 2: car, 3: motorcycle, 5: bus, 7: truck
                 config['DEVICE'],
                 self.logger
             )
