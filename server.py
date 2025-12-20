@@ -212,7 +212,7 @@ async def root():
     return FileResponse("static/index.html")
 
 # 정적 파일 마운트
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory="./static"), name="static")
 if __name__ == "__main__":
     import uvicorn
     # 서버 시작 전 환경변수 체크
